@@ -1,17 +1,17 @@
+import fnmatch
+import json
+import os
+from pathlib import Path
 import shutil
 
+import h5py
 from lerobot.common.datasets.lerobot_dataset import LEROBOT_HOME
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-from pathlib import Path
-import tyro
-import tqdm
-import os
-import fnmatch
-import h5py
 import numpy as np
-import json
+import tqdm
 
 REPO_NAME = "dian/stack_cup"
+
 
 def load_raw_images_per_camera(ep: h5py.File, cameras: list[str]) -> dict[str, np.ndarray]:
     imgs_per_cam = {}
@@ -22,15 +22,19 @@ def load_raw_images_per_camera(ep: h5py.File, cameras: list[str]) -> dict[str, n
             imgs_array = ep[f"/observations/images/{camera}"][:]
         else:
             import cv2
+
             imgs_array = []
             for data in ep[f"/observations/images/{camera}"]:
                 data = np.frombuffer(data, np.uint8)
-                imgs_array.append(cv2.imdecode(data, cv2.IMREAD_COLOR)) # [H, W, C] = [480, 640, 3]，此时是 RGB 格式的！！！
+                imgs_array.append(
+                    cv2.imdecode(data, cv2.IMREAD_COLOR)
+                )  # [H, W, C] = [480, 640, 3]，此时是 RGB 格式的！！！
             imgs_array = np.array(imgs_array)
-        
+
         imgs_per_cam[camera] = imgs_array
-    
+
     return imgs_per_cam
+
 
 def load_raw_episode_data(
     ep_path: Path,
@@ -41,13 +45,11 @@ def load_raw_episode_data(
         imgs_per_cam = None
         imgs_per_cam = load_raw_images_per_camera(
             ep,
-            [
-                "cam_high",
-                "cam_left"
-            ],
+            ["cam_high", "cam_left"],
         )
-    
+
     return imgs_per_cam, state, action
+
 
 def main(data_dir: str, *, push_to_hub: bool = False):
     # Clean up any existing dataset in the output directory
@@ -92,14 +94,14 @@ def main(data_dir: str, *, push_to_hub: bool = False):
 
     hdf5_files = []
     for root, _, files in os.walk(data_dir):
-        for filename in fnmatch.filter(files, '*.hdf5'):
+        for filename in fnmatch.filter(files, "*.hdf5"):
             file_path = os.path.join(root, filename)
             hdf5_files.append(file_path)
-    
+
     episodes = range(len(hdf5_files))
-    
-    max = 0 
-    min = 500 
+
+    max = 0
+    min = 500
     for ep_idx in tqdm.tqdm(episodes):
         ep_path = hdf5_files[ep_idx]
 
@@ -114,11 +116,11 @@ def main(data_dir: str, *, push_to_hub: bool = False):
             min = num_frames
         # add prompt
         dir_path = os.path.dirname(ep_path)
-        json_Path =f"{dir_path}/instructions.json"
-        
-        with open(json_Path, 'r') as f_instr:
+        json_Path = f"{dir_path}/instructions.json"
+
+        with open(json_Path) as f_instr:
             instruction_dict = json.load(f_instr)
-            instructions = instruction_dict['instructions']
+            instructions = instruction_dict["instructions"]
             instruction = np.random.choice(instructions)
 
         for i in range(num_frames):
@@ -126,7 +128,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
                 {
                     "image": imgs_per_cam["cam_left"][i],
                     "wrist_image": imgs_per_cam["cam_high"][i],
-                    "joints": state[i,:7],
+                    "joints": state[i, :7],
                     "gripper": np.array([state[i, 7]], dtype=np.float32),
                     "actions": action[i],
                 }
@@ -135,5 +137,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
 
         # Consolidate the dataset, skip computing stats since we will do that later
     dataset.consolidate(run_compute_stats=False)
-    print(max,min) # max = 491 min =221
+    print(max, min)  # max = 491 min =221
+
+
 main("/home/io/ld/openpi/processed_data/")

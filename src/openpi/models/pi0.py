@@ -16,6 +16,7 @@ import openpi.shared.nnx_utils as nnx_utils
 
 logger = logging.getLogger("openpi")
 
+
 # 生成 blockwise causual attn mask
 def make_attn_mask(input_mask, mask_ar):
     """Adapted from big_vision.
@@ -64,9 +65,12 @@ def posemb_sincos(
     )
     return jnp.concatenate([jnp.sin(sinusoid_input), jnp.cos(sinusoid_input)], axis=-1)
 
-'''
+
+"""
 Pi0Config 有 create, input_spec, get_freeze_filter
-'''
+"""
+
+
 @dataclasses.dataclass(frozen=True)
 class Pi0Config(_model.BaseModelConfig):
     dtype: str = "bfloat16"
@@ -76,7 +80,7 @@ class Pi0Config(_model.BaseModelConfig):
     # Set the model specific defaults.
     action_dim: int = 32
     action_horizon: int = 50
-    max_token_len: int = 48         # 针对语言的 max_token
+    max_token_len: int = 48  # 针对语言的 max_token
 
     @property
     @override
@@ -89,26 +93,30 @@ class Pi0Config(_model.BaseModelConfig):
 
     @override
     def inputs_spec(self, *, batch_size: int = 1) -> tuple[_model.Observation, _model.Actions]:
-        image_spec = jax.ShapeDtypeStruct([batch_size, *_model.IMAGE_RESOLUTION, 3], jnp.float32)  #image输入 [224, 224, 3] float(0~1)
+        image_spec = jax.ShapeDtypeStruct(
+            [batch_size, *_model.IMAGE_RESOLUTION, 3], jnp.float32
+        )  # image输入 [224, 224, 3] float(0~1)
         image_mask_spec = jax.ShapeDtypeStruct([batch_size], jnp.bool_)
 
         with at.disable_typechecking():
             observation_spec = _model.Observation(
                 images={
-                    "base_0_rgb": image_spec,           # 输入模型的名称 base_0_rgb
-                    "left_wrist_0_rgb": image_spec,     # left_wrist_0_rgb
-                    "right_wrist_0_rgb": image_spec,    # right_wrist_0_rgb
+                    "base_0_rgb": image_spec,  # 输入模型的名称 base_0_rgb
+                    "left_wrist_0_rgb": image_spec,  # left_wrist_0_rgb
+                    "right_wrist_0_rgb": image_spec,  # right_wrist_0_rgb
                 },
                 image_masks={
                     "base_0_rgb": image_mask_spec,
                     "left_wrist_0_rgb": image_mask_spec,
                     "right_wrist_0_rgb": image_mask_spec,
                 },
-                state=jax.ShapeDtypeStruct([batch_size, self.action_dim], jnp.float32),             # [b, 32]
+                state=jax.ShapeDtypeStruct([batch_size, self.action_dim], jnp.float32),  # [b, 32]
                 tokenized_prompt=jax.ShapeDtypeStruct([batch_size, self.max_token_len], jnp.int32),
                 tokenized_prompt_mask=jax.ShapeDtypeStruct([batch_size, self.max_token_len], bool),
             )
-        action_spec = jax.ShapeDtypeStruct([batch_size, self.action_horizon, self.action_dim], jnp.float32)   # [b, 50, 32]
+        action_spec = jax.ShapeDtypeStruct(
+            [batch_size, self.action_horizon, self.action_dim], jnp.float32
+        )  # [b, 50, 32]
 
         return observation_spec, action_spec
 
@@ -246,9 +254,9 @@ class Pi0(_model.BaseModel):
         self, rng: at.KeyArrayLike, observation: _model.Observation, actions: _model.Actions, *, train: bool = False
     ) -> at.Float[at.Array, "*b ah"]:
         preprocess_rng, noise_rng, time_rng = jax.random.split(rng, 3)
-        observation = _model.preprocess_observation(preprocess_rng, observation, train=train)   # 此时的 img (-1, 1)
+        observation = _model.preprocess_observation(preprocess_rng, observation, train=train)  # 此时的 img (-1, 1)
 
-        batch_shape = actions.shape[:-2]    # 提取出 batch_size 大小
+        batch_shape = actions.shape[:-2]  # 提取出 batch_size 大小
         noise = jax.random.normal(noise_rng, actions.shape)
         time = jax.random.beta(time_rng, 1.5, 1, batch_shape) * 0.999 + 0.001
         time_expanded = time[..., None, None]

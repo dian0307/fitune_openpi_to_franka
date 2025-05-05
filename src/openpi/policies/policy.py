@@ -48,7 +48,9 @@ class Policy(BasePolicy):
         self._rng, sample_rng = jax.random.split(self._rng)
         outputs = {
             "state": inputs["state"],
-            "actions": self._sample_actions(sample_rng, _model.Observation.from_dict(inputs), **self._sample_kwargs),  # 此处的 from_dict 将 rgb 的 255 转为了 0~1
+            "actions": self._sample_actions(
+                sample_rng, _model.Observation.from_dict(inputs), **self._sample_kwargs
+            ),  # 此处的 from_dict 将 rgb 的 255 转为了 0~1
         }
 
         # Unbatch and convert to np.ndarray.

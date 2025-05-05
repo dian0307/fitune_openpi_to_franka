@@ -1,10 +1,9 @@
-from openpi.models import model as _model
-from openpi.policies import policy_config as _policy_config  # policy
-from openpi.shared import download
-from openpi.training import config as _config  # traing_config
-import socket
 import logging
+import socket
+
+from openpi.policies import policy_config as _policy_config  # policy
 from openpi.serving import websocket_policy_server
+from openpi.training import config as _config  # traing_config
 
 # 定义模型的ckpt
 train_config_name = "pi0_franka_low_mem_finetune"

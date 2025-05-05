@@ -12,9 +12,7 @@ def make_franka_example() -> dict:
     return {
         "joints": np.random.rand(7),
         "gripper": np.random.rand(1),
-        "image": np.random.randint(
-            256, size=(224, 224, 3), dtype=np.uint8
-        ),  # channel 在最后
+        "image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),  # channel 在最后
         "wrist_image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
         "prompt": "do something",
     }
